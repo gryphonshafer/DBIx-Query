@@ -2,3 +2,6 @@ Revision history for DBIx::Query
 
 1.01    Mon Jun 10 18:56:29 PDT 2013
         First version, released on an unsuspecting world.
+
+1.02    Wed Jul 17 15:21:41 PDT 2013
+        Fixed unmarked dependency on DBD::SQLite.

@@ -4,42 +4,41 @@ use warnings;
 
 use Test::More;
 use Clone 'clone';
-use DBIx::Query;
 
 use constant MODULE => 'DBIx::Query';
 
-my $dq = MODULE->connect("dbi:SQLite:dbname=/tmp/dbix-query-test-$$.db");
-
-$dq->do('CREATE TABLE movie ( open TEXT, final TEXT, west TEXT, east TEXT )');
-my $insert = $dq->prepare('INSERT INTO movie ( open, final, west, east ) VALUES ( ?, ?, ?, ? )');
-
-while ( <DATA> ) {
-    chomp;
-    $insert->execute( split(/\|/) );
-}
-
-local $@;
-my $rv;
-eval { $rv = main(@ARGV) };
-unlink("/tmp/dbix-query-test-$$.db");
-exit ( ($@) ? $@ : $rv );
+exit main(@ARGV);
 
 sub main {
-    test_normal_query();
-    test_fast_query();
-    test_crud();
-    test_where();
-    test_db_helper_methods();
-    test_run();
-    test_row_set_methods();
-    test_row_methods();
-    test_cell_methods();
+    require_ok(MODULE);
+
+    my $dq = MODULE->connect('dbi:SQLite:dbname=:memory:');
+
+    $dq->do('CREATE TABLE movie ( open TEXT, final TEXT, west TEXT, east TEXT )');
+    my $insert = $dq->prepare('INSERT INTO movie ( open, final, west, east ) VALUES ( ?, ?, ?, ? )');
+
+    while ( <DATA> ) {
+        chomp;
+        $insert->execute( split(/\|/) );
+    }
+
+    test_normal_query($dq);
+    test_fast_query($dq);
+    test_crud($dq);
+    test_where($dq);
+    test_db_helper_methods($dq);
+    test_run($dq);
+    test_row_set_methods($dq);
+    test_row_methods($dq);
+    test_cell_methods($dq);
 
     done_testing();
     return 0;
 }
 
 sub test_normal_query {
+    my ($dq) = @_;
+
     is(
         $dq->sql('SELECT west FROM movie WHERE open = ?')->run('Jul 1, 2011')->value(),
         'Raising Arizona',
@@ -63,6 +62,8 @@ sub test_normal_query {
 }
 
 sub test_fast_query {
+    my ($dq) = @_;
+
     is(
         $dq->sql_fast('SELECT west FROM movie WHERE open = ?')->run('Jul 1, 2011')->value(),
         'Raising Arizona',
@@ -76,6 +77,8 @@ sub test_fast_query {
 }
 
 sub test_crud {
+    my ($dq) = @_;
+
     like(
         $dq->add(
             'movie',
@@ -113,6 +116,8 @@ sub test_crud {
 }
 
 sub test_where {
+    my ($dq) = @_;
+
     is_deeply(
         $dq->get('movie')->where( 'final' => 'Aug 7, 2011' )->run()->all({}),
         [{
@@ -160,6 +165,8 @@ sub test_where {
 }
 
 sub test_db_helper_methods {
+    my ($dq) = @_;
+
     is(
         $dq->fetch_value( 'movie', ['west'], { 'open' => 'Jul 1, 2011' } ),
         'Raising Arizona',
@@ -200,6 +207,8 @@ sub test_db_helper_methods {
 }
 
 sub test_run {
+    my ($dq) = @_;
+
     is_deeply(
         $dq->sql(
             'SELECT west, east FROM movie WHERE open = ?',
@@ -239,6 +248,8 @@ sub test_run {
 }
 
 sub test_row_set_methods {
+    my ($dq) = @_;
+
     my $row_set = $dq->sql('SELECT * FROM movie')->run();
 
     is_deeply(
@@ -320,6 +331,8 @@ sub test_row_set_methods {
 }
 
 sub test_row_methods {
+    my ($dq) = @_;
+
     is(
         $dq
             ->sql('SELECT * FROM movie WHERE east = ?')
@@ -407,6 +420,8 @@ sub test_row_methods {
 }
 
 sub test_cell_methods {
+    my ($dq) = @_;
+
     my $cell = $dq
         ->sql('SELECT "open", final, west FROM movie WHERE east = ?')
         ->run('There Be Dragons')->next()->cell('west');

@@ -5,6 +5,7 @@ use parent 'DBI';
 
 *errstr = \*DBI::errstr;
 
+our $VERSION = '1.02';
 our $_dq_parser_cache = {};
 
 #-----------------------------------------------------------------------------
