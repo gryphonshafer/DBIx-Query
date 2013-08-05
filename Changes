@@ -5,3 +5,6 @@ Revision history for DBIx::Query
 
 1.02    Wed Jul 17 15:21:41 PDT 2013
         Fixed unmarked dependency on DBD::SQLite.
+
+1.03    Wed Jul 17 15:21:41 PDT 2013
+        Added Perl 5.10.1 as a dependency to pick up parent pragma.
