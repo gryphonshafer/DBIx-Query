@@ -1,10 +1,14 @@
-DBIx::Query - Simplified abstracted chained DBI subclass
+# DBIx::Query - Simplified abstracted chained DBI subclass
 
 This module provides a simplified abstracted chained DBI subclass. It's sort of
 like jQuery for DBI, or sort of like DBIx::Class only without objects, or sort
-of like cookies without a glass of milk. With DBIx::Query, you can construct
-queries either with SQL or abstract Perl data structures described by
-SQL::Abstract::Complete.
+of like cookies without a glass of milk.
+
+[![Build Status](https://travis-ci.org/gryphonshafer/DBIx-Query.svg)](https://travis-ci.org/gryphonshafer/DBIx-Query)
+[![Coverage Status](https://coveralls.io/repos/gryphonshafer/DBIx-Query/badge.png)](https://coveralls.io/r/gryphonshafer/DBIx-Query)
+
+With DBIx::Query, you can construct queries either with SQL or abstract Perl
+data structures described by SQL::Abstract::Complete.
 
     my $stuff  = $dq->sql('SELECT stuff FROM things WHERE value = ?')->run(42)->all();
     my $things = $dq->get( 'things', ['stuff'], { 'value' = 42 } )->run()->all();
@@ -28,8 +32,7 @@ to its level. In DBI, there is: DBI (the parent class), db (the object
 created from a connect call), and st (the statement handle). DBIx::Query adds
 the following additional: rowset, row, and cell.
 
-
-INSTALLATION
+## Installation
 
 To install this module, run the following commands:
 
@@ -38,8 +41,7 @@ To install this module, run the following commands:
     make test
     make install
 
-
-SUPPORT AND DOCUMENTATION
+## Support and Documentation
 
 After installing, you can find documentation for this module with the
 perldoc command.
@@ -48,23 +50,14 @@ perldoc command.
 
 You can also look for information at:
 
-    RT, CPAN's request tracker
-        http://rt.cpan.org/NoAuth/Bugs.html?Dist=DBIx-Query
+- [GitHub](https://github.com/gryphonshafer/DBIx-Query "GitHub")
+- [AnnoCPAN](http://annocpan.org/dist/DBIx-Query "AnnoCPAN")
+- [CPAN Ratings](http://cpanratings.perl.org/m/DBIx-Query "CPAN Ratings")
+- [Search CPAN](http://search.cpan.org/dist/DBIx-Query "Search CPAN")
 
-    AnnoCPAN, Annotated CPAN documentation
-        http://annocpan.org/dist/DBIx-Query
+## Author and License
 
-    CPAN Ratings
-        http://cpanratings.perl.org/d/DBIx-Query
-
-    Search CPAN
-        http://search.cpan.org/dist/DBIx-Query
-
-
-AUTHOR AND LICENSE
-
-Gryphon Shafer, gryphon@cpan.org
+Gryphon Shafer, [gryphon@cpan.org](mailto:gryphon@cpan.org "Email Gryphon Shafer")
 
 This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself, either Perl version 5.8.4 or,
-at your option, any later version of Perl 5 you may have available.
+it under the same terms as Perl itself.

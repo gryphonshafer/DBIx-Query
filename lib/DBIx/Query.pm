@@ -5,7 +5,7 @@ use parent 'DBI';
 
 *errstr = \*DBI::errstr;
 
-our $VERSION = '1.03';
+our $VERSION = '1.04';
 our $_dq_parser_cache = {};
 
 #-----------------------------------------------------------------------------
@@ -546,7 +546,7 @@ our $_dq_parser_cache = {};
 }
 
 1;
-__END__
+
 =pod
 
 =head1 NAME

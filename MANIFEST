@@ -1,10 +1,9 @@
 Changes
 MANIFEST
 Makefile.PL
-README
+README.md
 lib/DBIx/Query.pm
 t/00-load.t
-t/boilerplate.t
 t/library.t
 t/manifest.t
 t/pod-coverage.t
