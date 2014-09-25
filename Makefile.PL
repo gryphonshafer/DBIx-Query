@@ -17,7 +17,7 @@ WriteMakefile(
         'DBI'                     => 0,
         'SQL::Abstract::Complete' => 1.03,
         'SQL::Parser'             => 0,
-        'Test::More'              => 0,
+        'Test::Most'              => 0,
     },
     'dist'  => { 'COMPRESS' => 'gzip -9f', 'SUFFIX' => 'gz' },
     'clean' => { 'FILES'    => 'DBIx-Query-*' },
