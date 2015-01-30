@@ -1,11 +1,13 @@
 package DBIx::Query;
+# ABSTRACT: Simplified abstracted chained DBI subclass
+
 use strict;
 use warnings;
+
+# VERSION
+
 use parent 'DBI';
-
 *errstr = \*DBI::errstr;
-
-our $VERSION = '1.04';
 our $_dq_parser_cache = {};
 
 #-----------------------------------------------------------------------------
@@ -546,12 +548,24 @@ our $_dq_parser_cache = {};
 }
 
 1;
+__END__
 
 =pod
 
-=head1 NAME
+=begin :badges
 
-DBIx::Query - Simplified abstracted chained DBI subclass
+=for markdown
+[![Build Status](https://travis-ci.org/gryphonshafer/DBIx-Query.svg)](https://travis-ci.org/gryphonshafer/DBIx-Query)
+[![Coverage Status](https://coveralls.io/repos/gryphonshafer/DBIx-Query/badge.png)](https://coveralls.io/r/gryphonshafer/DBIx-Query)
+
+=end :badges
+
+=begin :prelude
+
+=for test_synopsis
+my( $db_name, $db_host, $user, $pwd );
+
+=end :prelude
 
 =head1 SYNOPSIS
 
@@ -561,13 +575,13 @@ DBIx::Query - Simplified abstracted chained DBI subclass
 
     # get stuff, things, and everything easily
     my $everything = $dq->get('things')->run()->all({});
-    my $things     = $dq->get( 'things', ['stuff'], { 'value' = 42 } )->run()->all();
+    my $things     = $dq->get( 'things', ['stuff'], { 'value' => 42 } )->run()->all();
     my $stuff      = $dq->sql('SELECT stuff FROM things WHERE value = ?')->run(42)->all();
 
     # can use DBI methods at any point
     my $sth = $dq->get('things');
     $sth->execute();
-    my $stuff = $sth->fetchall_arrayref();
+    $stuff = $sth->fetchall_arrayref();
 
     # get all from data where a is 42 (as an arrayref of hashrefs)
     my $data = $dq->get('data')->where( 'a' => 42 )->run()->all({});
@@ -1049,15 +1063,14 @@ When called against a cell object, returns the row object to which it belongs.
 
 L<SQL::Abstract::Complete>, L<DBI>.
 
-=head1 AUTHOR
+You can also look for additional information at:
 
-Gryphon Shafer E<lt>gryphon@cpan.orgE<gt>.
-
-    code('Perl') || die;
-
-=head1 LICENSE
-
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself.
+=for :list
+* L<GitHub|https://github.com/gryphonshafer/DBIx-Query>
+* L<CPAN|http://search.cpan.org/dist/DBIx-Query>
+* L<MetaCPAN|https://metacpan.org/pod/DBIx::Query>
+* L<AnnoCPAN|http://annocpan.org/dist/DBIx-Query>
+* L<Travis CI|https://travis-ci.org/gryphonshafer/DBIx-Query>
+* L<Coveralls|https://coveralls.io/r/gryphonshafer/DBIx-Query>
 
 =cut
