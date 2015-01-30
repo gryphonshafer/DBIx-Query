@@ -4,7 +4,7 @@ DBIx::Query - Simplified abstracted chained DBI subclass
 
 # VERSION
 
-version 1.05
+version 1.06
 
 [![Build Status](https://travis-ci.org/gryphonshafer/DBIx-Query.svg)](https://travis-ci.org/gryphonshafer/DBIx-Query)
 [![Coverage Status](https://coveralls.io/repos/gryphonshafer/DBIx-Query/badge.png)](https://coveralls.io/r/gryphonshafer/DBIx-Query)

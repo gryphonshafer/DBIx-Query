@@ -22,6 +22,7 @@ my %WriteMakefileArgs = (
   "NAME" => "DBIx::Query",
   "PREREQ_PM" => {
     "Carp" => 0,
+    "DBD::SQLite" => 0,
     "DBI" => 0,
     "SQL::Abstract::Complete" => 0,
     "SQL::Parser" => 0,
@@ -38,7 +39,7 @@ my %WriteMakefileArgs = (
     "Test::More" => 0,
     "constant" => 0
   },
-  "VERSION" => "1.05",
+  "VERSION" => "1.06",
   "test" => {
     "TESTS" => "t/*.t"
   }
@@ -48,6 +49,7 @@ my %WriteMakefileArgs = (
 my %FallbackPrereqs = (
   "Carp" => 0,
   "Clone" => 0,
+  "DBD::SQLite" => 0,
   "DBI" => 0,
   "ExtUtils::MakeMaker" => 0,
   "File::Spec" => 0,
