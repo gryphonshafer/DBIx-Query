@@ -1,6 +1,8 @@
 Revision history for DBIx::Query
 
 {{$NEXT}}
+
+1.05      2015-01-29 16:45:21-08:00 America/Los_Angeles
         - Implementing use of Dist::Zilla.
 
 1.04      Wed Jul 17 15:21:41 PDT 2013
