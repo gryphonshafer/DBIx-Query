@@ -1072,5 +1072,7 @@ You can also look for additional information at:
 * L<AnnoCPAN|http://annocpan.org/dist/DBIx-Query>
 * L<Travis CI|https://travis-ci.org/gryphonshafer/DBIx-Query>
 * L<Coveralls|https://coveralls.io/r/gryphonshafer/DBIx-Query>
+* L<CPANTS|http://cpants.cpanauthors.org/dist/DBIx-Query>
+* L<CPAN Testers|http://www.cpantesters.org/distro/D/DBIx-Query.html>
 
 =cut
