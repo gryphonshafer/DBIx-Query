@@ -1,6 +1,7 @@
 package DBIx::Query;
 # ABSTRACT: Simplified abstracted chained DBI subclass
 
+use 5.008;
 use strict;
 use warnings;
 
