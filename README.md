@@ -349,7 +349,7 @@ A simple dumper of data for the given row set. This operates like [DBI](https://
 `fetchall_arrayref()` on an executed statement handle.
 
     my $arrayref_of_arrayrefs = $db->sql($sql)->run()->all();
-    my $arrayref_of_hashrefs = $db->sql($sql)->run()->all({});
+    my $arrayref_of_hashrefs  = $db->sql($sql)->run()->all({});
 
 ## each()
 
@@ -377,6 +377,29 @@ If in scalar context, the method assumes there is only a column returned and
 returns that value only. If there are multiple columns but the method is called
 in scalar context, the method throws an error. (If there are multiple rows
 found, only the first row's data will be returned, and no error will be thrown.)
+
+## first()
+
+Returns the first record. Has a similar interface to `all()` in that it'll
+normally return an arrayref of data, but if you pass in an empty hashref, it'll
+return a hashref of data.
+
+    my $arrayref = $db->sql($sql)->run()->first();
+    my $hashref  = $db->sql($sql)->run()->first({});
+
+If there are more than 1 rows the query will select, only the first row is
+returned.
+
+## column()
+
+Assuming a query that's going to return a column of data, this method will
+return the column of data as a list or an arrayref depending on context.
+
+    my $arrayref = $db->sql($sql)->run()->column();
+    my @array    = $db->sql($sql)->run()->column();
+
+If there are more than 1 columns requested in the query, only the first column
+is returned.
 
 ## up()
 

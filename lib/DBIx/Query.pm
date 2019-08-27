@@ -355,7 +355,7 @@ our $_dq_parser_cache = {};
         $self->{'sth'}->finish();
 
         my $wantarray = wantarray;
-        if (not defined $wantarray) {
+        if ( not defined $wantarray ) {
             croak('value() must not be called in void context');
         }
         elsif ( not wantarray ) {
@@ -369,6 +369,15 @@ our $_dq_parser_cache = {};
         else {
             return @value;
         }
+    }
+
+    sub first {
+        return shift->all(@_)->[0];
+    }
+
+    sub column {
+        my @values = map { $_->[0] } @{ shift->all() };
+        return (wantarray) ? @values : \@values;
     }
 
     sub up {
@@ -908,7 +917,7 @@ A simple dumper of data for the given row set. This operates like L<DBI>'s
 C<fetchall_arrayref()> on an executed statement handle.
 
     my $arrayref_of_arrayrefs = $db->sql($sql)->run()->all();
-    my $arrayref_of_hashrefs = $db->sql($sql)->run()->all({});
+    my $arrayref_of_hashrefs  = $db->sql($sql)->run()->all({});
 
 =head2 each()
 
@@ -936,6 +945,29 @@ If in scalar context, the method assumes there is only a column returned and
 returns that value only. If there are multiple columns but the method is called
 in scalar context, the method throws an error. (If there are multiple rows
 found, only the first row's data will be returned, and no error will be thrown.)
+
+=head2 first()
+
+Returns the first record. Has a similar interface to C<all()> in that it'll
+normally return an arrayref of data, but if you pass in an empty hashref, it'll
+return a hashref of data.
+
+    my $arrayref = $db->sql($sql)->run()->first();
+    my $hashref  = $db->sql($sql)->run()->first({});
+
+If there are more than 1 rows the query will select, only the first row is
+returned.
+
+=head2 column()
+
+Assuming a query that's going to return a column of data, this method will
+return the column of data as a list or an arrayref depending on context.
+
+    my $arrayref = $db->sql($sql)->run()->column();
+    my @array    = $db->sql($sql)->run()->column();
+
+If there are more than 1 columns requested in the query, only the first column
+is returned.
 
 =head2 up()
 
