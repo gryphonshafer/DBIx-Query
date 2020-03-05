@@ -1100,9 +1100,7 @@ You can also look for additional information at:
 
 =for :list
 * L<GitHub|https://github.com/gryphonshafer/DBIx-Query>
-* L<CPAN|http://search.cpan.org/dist/DBIx-Query>
 * L<MetaCPAN|https://metacpan.org/pod/DBIx::Query>
-* L<AnnoCPAN|http://annocpan.org/dist/DBIx-Query>
 * L<Travis CI|https://travis-ci.org/gryphonshafer/DBIx-Query>
 * L<Coveralls|https://coveralls.io/r/gryphonshafer/DBIx-Query>
 * L<CPANTS|http://cpants.cpanauthors.org/dist/DBIx-Query>
