@@ -17,6 +17,7 @@ our $_dq_parser_cache = {};
     package DBIx::Query::_Common;
     use strict;
     use warnings;
+    use Carp 'croak';
 
     sub _param {
         my $self = shift;
@@ -25,6 +26,17 @@ our $_dq_parser_cache = {};
         return unless ($name);
         $self->{'private_dq_stash'}{$name} = shift if (@_);
         return $self->{'private_dq_stash'}{$name};
+    }
+
+    sub _try {
+        my ( $self, $cb ) = @_;
+
+        local $@;
+        eval { $cb->() };
+        if ($@) {
+            ( my $error = $@ ) =~ s/\s*at.+?line \d+\.\s*//;
+            croak $error;
+        }
     }
 }
 
@@ -36,6 +48,7 @@ our $_dq_parser_cache = {};
     use warnings;
     use SQL::Parser;
     use SQL::Abstract::Complete;
+
     use vars '@ISA';
     @ISA = qw( DBI::db DBIx::Query::_Common );
 
@@ -70,6 +83,7 @@ our $_dq_parser_cache = {};
 
     sub sql {
         my ( $self, $sql, $attr, $cache_type, $variables ) = @_;
+        $self->_croak('SQL input missing in sql() call') unless ( length $sql );
 
         my $sth = $self->sql_fast( $sql, $attr, $cache_type, $variables );
 
@@ -150,9 +164,12 @@ our $_dq_parser_cache = {};
     sub sql_fast {
         my ( $self, $sql, $attr, $cache_type, $variables ) = @_;
 
-        my $sth = ( not defined $cache_type )
-            ? $self->SUPER::prepare( $sql, $attr )
-            : $self->SUPER::prepare_cached( $sql, $attr, $cache_type );
+        my $sth;
+        $self->_try( sub {
+            $sth = ( not defined $cache_type )
+                ? $self->SUPER::prepare( $sql, $attr )
+                : $self->SUPER::prepare_cached( $sql, $attr, $cache_type );
+        } );
 
         $sth->_param( 'sql'       => $sql       );
         $sth->_param( 'dq'        => $self      );
@@ -165,9 +182,12 @@ our $_dq_parser_cache = {};
         my $self = shift;
         my $query = $self->_get_prep( 'get_fast', @_ );
 
-        my $sth = ( not defined $query->{'cache_type'} )
-            ? $self->SUPER::prepare( $query->{'sql'}, $query->{'attr'} )
-            : $self->SUPER::prepare_cached( $query->{'sql'}, $query->{'attr'}, $query->{'cache_type'} );
+        my $sth;
+        $self->_try( sub {
+            $sth = ( not defined $query->{'cache_type'} )
+                ? $self->SUPER::prepare( $query->{'sql'}, $query->{'attr'} )
+                : $self->SUPER::prepare_cached( $query->{'sql'}, $query->{'attr'}, $query->{'cache_type'} );
+        } );
 
         $sth->_param( 'sql'       => $query->{'sql'}       );
         $sth->_param( 'dq'        => $self                 );
@@ -181,12 +201,12 @@ our $_dq_parser_cache = {};
         my ( $self, $table_name, $params, $attr, $cache_type ) = @_;
         my ( $sql, @variables ) = $self->_param('sql_abstract')->insert( $table_name, $params );
 
-        my $sth = $self->sql_fast( $sql, $attr, $cache_type, \@variables );
-        $sth->execute( @{ $sth->_param('variables') || [] } );
+        $self->_try( sub {
+            my $sth = $self->sql_fast( $sql, $attr, $cache_type, \@variables );
+            $sth->execute( @{ $sth->_param('variables') || [] } );
+        } );
 
         my $pk;
-
-        local $@;
         eval {
             $pk = $self->last_insert_id(
                 undef,
@@ -225,26 +245,48 @@ our $_dq_parser_cache = {};
     sub get_run {
         my $self = shift;
         my $sth = $self->get_fast(@_);
-        $sth->execute( @{ $sth->_param('variables') || [] } );
+
+        $self->_try( sub {
+            $sth->execute( @{ $sth->_param('variables') || [] } );
+        } );
+
         return $sth;
     }
 
     sub fetch_value {
         my $self = shift;
         my $sth  = $self->get_run(@_);
-        return ( $sth->fetchrow_array )[0];
+        my $value;
+
+        $self->_try( sub {
+            $value = ( $sth->fetchrow_array )[0];
+        } );
+
+        return $value;
     }
 
     sub fetchall_arrayref {
         my $self = shift;
         my $sth  = $self->get_run(@_);
-        return $sth->fetchall_arrayref;
+        my $value;
+
+        $self->_try( sub {
+            $value = $sth->fetchall_arrayref;
+        } );
+
+        return $value;
     }
 
     sub fetchall_hashref {
         my $self = shift;
         my $sth  = $self->get_run(@_);
-        return $sth->fetchall_arrayref({});
+        my $value;
+
+        $self->_try( sub {
+            $value = $sth->fetchall_arrayref({});
+        } );
+
+        return $value;
     }
 
     sub fetch_column_arrayref {
@@ -254,10 +296,15 @@ our $_dq_parser_cache = {};
 
     sub fetchrow_hashref {
         my ( $self, $sql, @variables ) = @_;
-        my $sth = $self->SUPER::prepare_cached($sql);
-        $sth->execute(@variables);
-        my $row = $sth->fetchrow_hashref;
-        $sth->finish;
+
+        my $row;
+        $self->_try( sub {
+            my $sth = $self->SUPER::prepare_cached($sql);
+            $sth->execute(@variables);
+            $row = $sth->fetchrow_hashref;
+            $sth->finish;
+        } );
+
         return $row;
     }
 }
@@ -268,9 +315,10 @@ our $_dq_parser_cache = {};
     package DBIx::Query::st;
     use strict;
     use warnings;
+    use Carp 'croak';
+
     use vars '@ISA';
     @ISA = qw( DBI::st DBIx::Query::_Common );
-    use Carp 'croak';
 
     sub where {
         my $self = shift;
@@ -290,8 +338,13 @@ our $_dq_parser_cache = {};
     }
 
     sub run {
-        my $self = shift;
-        $self->execute( (@_) ? @_ : @{ $self->_param('variables') || [] } );
+        my $self  = shift;
+        my @input = @_;
+
+        $self->_try( sub {
+            $self->execute( (@input) ? @input : @{ $self->_param('variables') || [] } );
+        } );
+
         return DBIx::Query::_Dq::RowSet->new($self);
     }
 
@@ -331,28 +384,50 @@ our $_dq_parser_cache = {};
         $skip ||= 0;
 
         my $method = ( $self->{'sth'}->_param('wildcard_column') ) ? 'fetchrow_hashref' : 'fetchrow_arrayref';
-        $self->{'sth'}->fetchrow_arrayref() while ( $skip-- );
 
-        if ( my $row = $self->{'sth'}->$method() ) {
-            return DBIx::Query::_Dq::Row->new( $row, $self );
-        }
+        my $value;
+        DBIx::Query::_Common::_try( $self, sub {
+            $self->{'sth'}->fetchrow_arrayref() while ( $skip-- );
+
+            if ( my $row = $self->{'sth'}->$method() ) {
+                $value = DBIx::Query::_Dq::Row->new( $row, $self );
+            }
+        } );
+
+        return $value if ($value);
     }
 
     sub all {
-        return shift->{'sth'}->fetchall_arrayref(@_);
+        my $self  = shift;
+        my @input = @_;
+
+        my @value;
+        DBIx::Query::_Common::_try( $self, sub {
+            @value = $self->{'sth'}->fetchall_arrayref(@input);
+        } );
+
+        return @value;
     }
 
     sub each {
         my ( $self, $code ) = @_;
         my $method = ( $self->{'sth'}->_param('wildcard_column') ) ? 'fetchrow_hashref' : 'fetchrow_arrayref';
-        $code->( DBIx::Query::_Dq::Row->new( $_, $self ) ) while ( $_ = $self->{'sth'}->$method() );
+
+        DBIx::Query::_Common::_try( $self, sub {
+            $code->( DBIx::Query::_Dq::Row->new( $_, $self ) ) while ( $_ = $self->{'sth'}->$method() );
+        } );
+
         return $self;
     }
 
     sub value {
         my $self  = shift;
-        my @value = $self->{'sth'}->fetchrow_array();
-        $self->{'sth'}->finish();
+
+        my @value;
+        DBIx::Query::_Common::_try( $self, sub {
+            @value = $self->{'sth'}->fetchrow_array();
+            $self->{'sth'}->finish();
+        } );
 
         my $wantarray = wantarray;
         if ( not defined $wantarray ) {
