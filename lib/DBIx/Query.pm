@@ -90,37 +90,7 @@ our $_dq_parser_cache = {};
         $sql =~ s/(\r?\n|\s+)/ /g;
         $sql =~ s/^\s+|\s+$//g;
 
-        $DBIx::Query::_dq_parser_cache->{$sql} ||= $self->_param('sql_parser')->structure()
-            if ( not $DBIx::Query::_dq_parser_cache->{$sql} and $self->_param('sql_parser')->parse($sql) );
-
-        if ( $DBIx::Query::_dq_parser_cache->{$sql} ) {
-            my $structure    = $DBIx::Query::_dq_parser_cache->{$sql};
-            my $column_index = 0;
-            my %aliases;
-
-            {
-                no warnings;
-                $structure->{'column_lookup'} = {
-                    map {
-                        my $index = $column_index++;
-                        $aliases{ $_->{'alias'} } = $index if ( $_->{'alias'} );
-                        $sth->_param( 'wildcard_column' => 1 ) if ( $_->{'value'} eq '*' );
-                        $_->{'value'} => $index;
-                    } @{ $structure->{'column_defs'} }
-                };
-            };
-
-            $structure->{'column_invert_lookup'} = {
-                map { $structure->{'column_lookup'}->{$_} => $_ } keys %{ $structure->{'column_lookup'} }
-            };
-            foreach ( keys %aliases ) {
-                $structure->{'column_lookup'}{$_}                    = $aliases{$_};
-                $structure->{'column_invert_lookup'}{ $aliases{$_} } = $_;
-            }
-
-            $sth->_param( 'structure' => $structure );
-        }
-
+        $sth->_param( 'sql' => $sql );
         return $sth;
     }
 
@@ -354,11 +324,68 @@ our $_dq_parser_cache = {};
     }
 
     sub structure {
-        return shift->_param('structure');
+        my $self = shift;
+
+        my $structure = $self->_param('structure');
+
+        return $structure if ($structure);
+        return if ( $self->_param('no_structure') );
+
+        my $sql = $self->_param('sql');
+
+        $DBIx::Query::_dq_parser_cache->{$sql} ||= $self->_param('dq')->_param('sql_parser')->structure() if (
+            not $DBIx::Query::_dq_parser_cache->{$sql} and
+            $self->_param('dq')->_param('sql_parser')->parse($sql)
+        );
+
+        $self->_param( 'wildcard_column' => 0 );
+
+        if ( $DBIx::Query::_dq_parser_cache->{$sql} ) {
+            my $structure    = $DBIx::Query::_dq_parser_cache->{$sql};
+            my $column_index = 0;
+            my %aliases;
+
+            {
+                no warnings;
+                $structure->{'column_lookup'} = {
+                    map {
+                        my $index = $column_index++;
+                        $aliases{ $_->{'alias'} } = $index if ( $_->{'alias'} );
+                        $self->_param( 'wildcard_column' => 1 ) if ( $_->{'value'} eq '*' );
+                        $_->{'value'} => $index;
+                    } @{ $structure->{'column_defs'} }
+                };
+            };
+
+            $structure->{'column_invert_lookup'} = {
+                map { $structure->{'column_lookup'}->{$_} => $_ } keys %{ $structure->{'column_lookup'} }
+            };
+            foreach ( keys %aliases ) {
+                $structure->{'column_lookup'}{$_}                    = $aliases{$_};
+                $structure->{'column_invert_lookup'}{ $aliases{$_} } = $_;
+            }
+
+            $self->_param( 'structure' => $structure );
+            return $structure;
+        }
+        else {
+            $self->_param( 'no_structure' => 1 );
+            return;
+        }
     }
 
     sub table {
-        return shift->_param('structure')->{'table_names'}[0];
+        return shift->structure()->{'table_names'}[0];
+    }
+
+    sub wildcard_column {
+        my $self = shift;
+
+        my $wildcard_column = $self->_param('wildcard_column');
+        return $wildcard_column if ( defined $wildcard_column );
+
+        $self->structure();
+        return $self->_param('wildcard_column');
     }
 
     sub up {
@@ -383,7 +410,7 @@ our $_dq_parser_cache = {};
         my ( $self, $skip ) = @_;
         $skip ||= 0;
 
-        my $method = ( $self->{'sth'}->_param('wildcard_column') ) ? 'fetchrow_hashref' : 'fetchrow_arrayref';
+        my $method = ( $self->{'sth'}->wildcard_column() ) ? 'fetchrow_hashref' : 'fetchrow_arrayref';
 
         my $value;
         DBIx::Query::_Common::_try( $self, sub {
@@ -411,7 +438,7 @@ our $_dq_parser_cache = {};
 
     sub each {
         my ( $self, $code ) = @_;
-        my $method = ( $self->{'sth'}->_param('wildcard_column') ) ? 'fetchrow_hashref' : 'fetchrow_arrayref';
+        my $method = ( $self->{'sth'}->wildcard_column() ) ? 'fetchrow_hashref' : 'fetchrow_arrayref';
 
         DBIx::Query::_Common::_try( $self, sub {
             $code->( DBIx::Query::_Dq::Row->new( $_, $self ) ) while ( $_ = $self->{'sth'}->$method() );
