@@ -3,6 +3,7 @@ Revision history for DBIx::Query
 {{$NEXT}}
         - croak instead of die when RaiseError
         - JIT SQL parsing for efficiency
+        - Allow explicit SQL parsing dialect to be set
 
 1.07      2019-08-27 15:27:56-07:00 America/Los_Angeles
         - Update Travis YAML

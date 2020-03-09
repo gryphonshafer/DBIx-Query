@@ -61,9 +61,14 @@ our $_dq_parser_cache = {};
         $self->_param( 'connection'   => $connection );
         $self->_param( 'sql_abstract' => SQL::Abstract::Complete->new() );
 
+        my $dialect = ( ref $connection eq 'HASH' and ref $connection->{attr} eq 'HASH' )
+            ? $connection->{attr}{dq_dialect}
+            : undef;
+        $dialect ||= 'ANSI';
+
         $self->_param(
             'sql_parser' => SQL::Parser->new(
-                'ANSI', { 'RaiseError' => 0, 'PrintError' => 0 }
+                $dialect, { 'RaiseError' => 0, 'PrintError' => 0 }
             )
         );
 
@@ -683,7 +688,12 @@ my( $db_name, $db_host, $user, $pwd );
 
     use DBIx::Query;
 
-    my $dq = DBIx::Query->connect( "dbi:Pg:dbname=$db_name;host=$db_host", $user, $pwd );
+    my $dq = DBIx::Query->connect(
+        "dbi:Pg:dbname=$db_name;host=$db_host",
+        $user,
+        $pwd,
+        { dq_dialect => 'ANSI' },
+    );
 
     # get stuff, things, and everything easily
     my $everything = $dq->get('things')->run()->all({});
@@ -766,6 +776,16 @@ C<connect()> method's package name.
 
 The object returned is a database object and so will support both L<DBI> and
 DBIx::Query methods associated with database objects.
+
+=head3 dq_dialect
+
+As part of the optional attribute hashref for C<connect()>, you may pass in an
+optional C<dq_dialect> value. This should be a string that represents the SQL
+dialect you're going to use, and for which DBIx::Query should be prepared to
+parse.
+
+For more information, see L<SQL::Parser> documentation on dialect. If not
+specified, DBIx::Query defaults to the "ANSI" dialect.
 
 =head2 errstr()
 
