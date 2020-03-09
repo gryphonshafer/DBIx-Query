@@ -7,6 +7,7 @@ use warnings;
 
 # VERSION
 
+use DBI 1.40;
 use parent 'DBI';
 *errstr = \*DBI::errstr;
 our $_dq_parser_cache = {};
@@ -53,6 +54,16 @@ our $_dq_parser_cache = {};
     use vars '@ISA';
     @ISA = qw( DBI::db DBIx::Query::_Common );
 
+    sub connect {
+        my $self = shift;
+        return $self->SUPER::connect_cached(@_);
+    }
+
+    sub connect_uncached {
+        my $self = shift;
+        return $self->SUPER::connect(@_);
+    }
+
     sub connected {
         my $self = shift;
 
@@ -87,16 +98,24 @@ our $_dq_parser_cache = {};
             @{ $self->_param('connection') }{@_};
     }
 
-    sub sql {
+    sub _sth_setup {
         my ( $self, $sql, $attr, $cache_type, $variables ) = @_;
-        $self->_croak('SQL input missing in sql() call') unless ( length $sql );
 
         my $sth;
         $self->_try( sub {
-            $sth = ( not defined $cache_type )
+            $sth = ( defined $cache_type and $cache_type == -1 )
                 ? $self->SUPER::prepare( $sql, $attr )
                 : $self->SUPER::prepare_cached( $sql, $attr, $cache_type );
         } );
+
+        return $sth;
+    }
+
+    sub _query {
+        my ( $self, $sql, $attr, $cache_type, $variables ) = @_;
+        $cache_type //= 3;
+
+        my $sth = $self->_sth_setup( $sql, $attr, $cache_type, $variables );
 
         $sql =~ s/(\r?\n|\s+)/ /g;
         $sql =~ s/^\s+|\s+$//g;
@@ -108,11 +127,18 @@ our $_dq_parser_cache = {};
         return $sth;
     }
 
+    sub sql {
+        my ( $self, $sql, $attr, $cache_type, $variables ) = @_;
+        $self->_croak('SQL input missing in sql() call') unless ( length $sql );
+        return $self->_query( $sql, $attr, $cache_type, $variables );
+    }
+
     sub get {
         my ( $self, $tables, $columns, $where, $meta, $attr, $cache_type ) = @_;
-
         my ( $sql, @variables ) = $self->_param('sql_abstract')->select( $tables, $columns, $where, $meta );
-        my $query               = {
+        my $sth = $self->_query( $sql, $attr, $cache_type, \@variables );
+
+        $sth->_param( 'query' => {
             'tables'     => $tables,
             'columns'    => $columns,
             'where'      => $where,
@@ -121,36 +147,21 @@ our $_dq_parser_cache = {};
             'cache_type' => $cache_type,
             'sql'        => $sql,
             'variables'  => \@variables,
-        };
-
-        my $sth;
-        $self->_try( sub {
-            $sth = ( not defined $query->{'cache_type'} )
-                ? $self->SUPER::prepare( $query->{'sql'}, $query->{'attr'} )
-                : $self->SUPER::prepare_cached( $query->{'sql'}, $query->{'attr'}, $query->{'cache_type'} );
         } );
-
-        $query->{sql} =~ s/(\r?\n|\s+)/ /g;
-        $query->{sql} =~ s/^\s+|\s+$//g;
-
-        $sth->_param( 'sql'       => $query->{'sql'}       );
-        $sth->_param( 'dq'        => $self                 );
-        $sth->_param( 'variables' => $query->{'variables'} );
-        $sth->_param( 'query'     => $query                );
 
         return $sth;
     }
 
-    sub sql_cached {
-        my ( $self, @params ) = @_;
-        push( @params, undef ) while ( @params < 2 );
-        return $self->sql( @params, 0 );
+    sub sql_uncached {
+        my ( $self, $sql, $attr, $cache_type, $variables ) = @_;
+        $cache_type = -1;
+        return $self->sql( $sql, $attr, $cache_type, $variables );
     }
 
-    sub get_cached {
-        my ( $self, @params ) = @_;
-        push( @params, undef ) while ( @params < 5 );
-        return $self->get( @params, 0 );
+    sub get_uncached {
+        my ( $self, $tables, $columns, $where, $meta, $attr, $cache_type ) = @_;
+        $cache_type = -1;
+        return $self->get( $tables, $columns, $where, $meta, $attr, $cache_type );
     }
 
     sub sql_fast {
@@ -228,6 +239,7 @@ our $_dq_parser_cache = {};
 
         $self->_try( sub {
             $value = ( $sth->fetchrow_array )[0];
+            $sth->finish;
         } );
 
         return $value;
@@ -240,6 +252,7 @@ our $_dq_parser_cache = {};
 
         $self->_try( sub {
             $value = $sth->fetchall_arrayref;
+            $sth->finish;
         } );
 
         return $value;
@@ -252,6 +265,7 @@ our $_dq_parser_cache = {};
 
         $self->_try( sub {
             $value = $sth->fetchall_arrayref({});
+            $sth->finish;
         } );
 
         return $value;
@@ -263,12 +277,22 @@ our $_dq_parser_cache = {};
     }
 
     sub fetchrow_hashref {
-        my ( $self, $sql, @variables ) = @_;
+        my ( $self, $sql ) = ( shift, shift );
+        $self->_croak('SQL input missing in sql() call') unless ( length $sql );
+
+        my ( $variables, $attr, $cache_type );
+        if ( not defined $_[0] or ref $_[0] eq 'HASH' ) {
+            ( $variables, $attr, $cache_type ) = @_;
+        }
+        else {
+            $variables = \@_;
+        }
+        $cache_type //= 3;
 
         my $row;
         $self->_try( sub {
-            my $sth = $self->SUPER::prepare_cached($sql);
-            $sth->execute(@variables);
+            my $sth = $self->_sth_setup( $sql, $attr, $cache_type, $variables );
+            $sth->execute(@$variables);
             $row = $sth->fetchrow_hashref;
             $sth->finish;
         } );
@@ -374,7 +398,7 @@ our $_dq_parser_cache = {};
         return shift->structure()->{'table_names'}[0];
     }
 
-    sub wildcard_column {
+    sub _wildcard_column {
         my $self = shift;
 
         my $wildcard_column = $self->_param('wildcard_column');
@@ -406,7 +430,7 @@ our $_dq_parser_cache = {};
         my ( $self, $skip ) = @_;
         $skip ||= 0;
 
-        my $method = ( $self->{'sth'}->wildcard_column() ) ? 'fetchrow_hashref' : 'fetchrow_arrayref';
+        my $method = ( $self->{'sth'}->_wildcard_column() ) ? 'fetchrow_hashref' : 'fetchrow_arrayref';
 
         my $value;
         DBIx::Query::_Common::_try( $self, sub {
@@ -415,6 +439,7 @@ our $_dq_parser_cache = {};
             if ( my $row = $self->{'sth'}->$method() ) {
                 $value = DBIx::Query::_Dq::Row->new( $row, $self );
             }
+
         } );
 
         return $value if ($value);
@@ -427,6 +452,7 @@ our $_dq_parser_cache = {};
         my @value;
         DBIx::Query::_Common::_try( $self, sub {
             @value = $self->{'sth'}->fetchall_arrayref(@input);
+            $self->{'sth'}->finish;
         } );
 
         return @value;
@@ -434,10 +460,11 @@ our $_dq_parser_cache = {};
 
     sub each {
         my ( $self, $code ) = @_;
-        my $method = ( $self->{'sth'}->wildcard_column() ) ? 'fetchrow_hashref' : 'fetchrow_arrayref';
+        my $method = ( $self->{'sth'}->_wildcard_column() ) ? 'fetchrow_hashref' : 'fetchrow_arrayref';
 
         DBIx::Query::_Common::_try( $self, sub {
             $code->( DBIx::Query::_Dq::Row->new( $_, $self ) ) while ( $_ = $self->{'sth'}->$method() );
+            $self->{'sth'}->finish;
         } );
 
         return $self;
@@ -745,9 +772,19 @@ any point, you can drop out of DBIx::Query-specific methods and use DBI methods.
     my $stuff = $sth->fetchall_arrayref();
 
 Like L<DBI>, there are multiple sub-classes each with a set of methods related
-to its level. In L<DBI>, there is: DBI (the parent class), db (the object
-created from a connect call), and st (the statement handle). DBIx::Query adds
-the following additional: rowset, row, and cell.
+to its level. In L<DBI>, there is:
+
+=for :list
+* DBI (the parent class)
+* db (the object created from a connect call)
+* st (the statement handle)
+
+DBIx::Query adds the following additional:
+
+=for :list
+* rowset
+* row
+* cell
 
 =head1 PARENT CLASS METHODS
 
@@ -755,10 +792,9 @@ The following methods exists at the "parent class" level.
 
 =head2 connect()
 
-This method is inherritted from L<DBI>. I only mention it here to point out
-that since DBIx::Query is a true subclass of L<DBI>, typically the only thing
-you have to do to switch from L<DBI> to DBIx::Query is to change the
-C<connect()> method's package name.
+This method is inherritted from L<DBI>'s C<connect_cached()>.  Since DBIx::Query
+is a true subclass of L<DBI>, typically the only thing you have to do to switch
+from L<DBI> to DBIx::Query is to change the C<connect()> method's package name.
 
     my $dq = DBIx::Query->connect(
         "dbi:Pg:dbname=$db_name;host=$db_host", $username, $password,
@@ -775,8 +811,20 @@ optional C<dq_dialect> value. This should be a string that represents the SQL
 dialect you're going to use, and for which DBIx::Query should be prepared to
 parse.
 
+    my $dq = DBIx::Query->connect(
+        'dbi:SQLite:dbname=:memory:',
+        undef,
+        undef,
+        { dq_dialect => 'ANSI' },
+    );
+
 For more information, see L<SQL::Parser> documentation on dialect. If not
 specified, DBIx::Query defaults to the "ANSI" dialect.
+
+=head2 connect_uncached()
+
+If you'd prefer L<DBI>'s normal, uncached C<connect()> behavior, you can use
+C<connect_uncached()>.
 
 =head2 errstr()
 
@@ -806,8 +854,8 @@ arrayref or array depending on context.
 If no values are provided, this method returns a hashref or an array of values
 depending on the context.
 
-    my $hashref  = $dq->connection();
-    my @array    = $dq->connection();
+    my $hashref = $dq->connection();
+    my @array   = $dq->connection();
 
 =head2 sql()
 
@@ -816,9 +864,9 @@ variables and returns a DBIx::Query statement handle.
 
     my $sth = $db->sql('SELECT alpha, beta, COUNT(*) FROM things WHERE delta > ?');
 
-If the cache type definition is C<undef>, then DBIx::Query calls L<DBI>'s
-C<prepare()>, else it calls C<prepare_cached()> and uses the cache type as the
-C<$if_active>. (See the L<DBI> documentation.)
+If the cache type definition is C<undef>, then DBIx::Query will set it to 3.
+(See L<DBI> for details of what the 1, 2, and 3 level caching means.) If you'd
+prefer no caching, you can set cache type to -1 or use C<sql_uncached>.
 
 The attributes value is passed through to the C<prepare()> or
 C<prepare_cached()> call. The values (if any are provided) are stored in the
@@ -831,6 +879,11 @@ C<run()>.
         1,
         10,
     )->run();
+
+=head2 sql_uncached()
+
+This method is the equivalent of C<sql()> with the cache value set to -1, which
+results in a normal C<prepare> call instead of C<prepare_cached>.
 
 =head2 get()
 
@@ -849,15 +902,16 @@ L<SQL::Abstract::Complete> to generate SQL.
 
 The first 4 inputs are passed directly to L<SQL::Abstract::Complete>, so
 consult that documentation for details. The last 2 inputs are the same as what
-is used for C<sql()>. If the cache type definition is C<undef>, then
-DBIx::Query calls L<DBI>'s C<prepare()>, else it calls C<prepare_cached()> and
-uses the cache type as the C<$if_active>. (See the L<DBI> documentation.)
+is used for C<sql()>.
 
-=head2 sql_cached() and get_cached()
+If the cache type definition is C<undef>, then DBIx::Query will set it to 3.
+(See L<DBI> for details of what the 1, 2, and 3 level caching means.) If you'd
+prefer no caching, you can set cache type to -1 or use C<sql_uncached>.
 
-These are simple wrapper methods around C<sql()> and C<get()> that explicitly
-set caching on and cache type set to 0. This is the normal behavior if you're
-calling L<DBI>'s C<prepare_cached()>.
+=head2 get_uncached()
+
+This method is the equivalent of C<get()> with the cache value set to -1, which
+results in a normal C<prepare> call instead of C<prepare_cached>.
 
 =head2 add()
 
@@ -902,9 +956,11 @@ was called.
 
 The C<$params> value is a hashref of fields and values for the update. The
 C<$where> value is a hashref of fields and values to be used as a where clause
-for the update. If the cache type definition is C<undef>, then DBIx::Query calls
-L<DBI>'s C<prepare()>, else it calls C<prepare_cached()> and uses the cache type
-as the C<$if_active>. (See the L<DBI> documentation.)
+for the update.
+
+If the cache type definition is C<undef>, then DBIx::Query will set it to 3.
+(See L<DBI> for details of what the 1, 2, and 3 level caching means.) If you'd
+prefer no caching, you can set cache type to -1 or use C<sql_uncached>.
 
 =head1 DATABASE CLASS HELPER METHODS
 
@@ -940,10 +996,14 @@ against the database class and returns the first column's values as an arrayref.
 
 =head2 fetchrow_hashref()
 
-Accepts some SQL and optional variables (as a list). It internally calls
-C<prepare_cached>, C<execute()> with the variables passed in, and then returns
-the first C<fetchrow_hashref()> result (C<fetchrow_hashref()> being called
-against the executed statement handle).
+Accepts some SQL and other optional values, prepares and executes the query,
+and returns the first row as a hashref.
+
+    my $hashref_row = $dq->fetchrow_hashref( $sql, $variables, $attr, $cache_type );
+
+Variables for the query are expected in an arrayref. Attributes are expected as
+a hashref. And the cache type is by default set to 3 if not defined. If you want
+to skip caching, pass a value of -1.
 
 =head1 STATEMENT HANDLE METHODS
 

@@ -48,14 +48,14 @@ sub test_query {
         '$dq->get(...)->run(...)->value()',
     );
     is(
-        $dq->sql_cached('SELECT west FROM movie WHERE open = ?')->run('Jul 1, 2011')->value(),
+        $dq->sql_uncached('SELECT west FROM movie WHERE open = ?')->run('Jul 1, 2011')->value(),
         'Raising Arizona',
-        '$dq->sql_cached(...)->run(...)->value()',
+        '$dq->sql_uncached(...)->run(...)->value()',
     );
     is(
-        $dq->get_cached( 'movie', ['west'], { 'open' => 'Jul 1, 2011' } )->run()->value(),
+        $dq->get_uncached( 'movie', ['west'], { 'open' => 'Jul 1, 2011' } )->run()->value(),
         'Raising Arizona',
-        '$dq->get_cached(...)->run(...)->value()',
+        '$dq->get_uncached(...)->run(...)->value()',
     );
 }
 

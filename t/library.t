@@ -17,8 +17,8 @@ sub main {
     test_connection( $dq, $data );
     test_sql( $dq, $data );
     test_get( $dq, $data );
-    test_sql_cached( $dq, $data );
-    test_get_cached( $dq, $data );
+    test_sql_uncached( $dq, $data );
+    test_get_uncached( $dq, $data );
     test_add( $dq, $data );
     test_rm( $dq, $data );
     test_update( $dq, $data );
@@ -104,16 +104,16 @@ sub test_get {
     is( $row_set->sql(), 'SELECT a, b, c FROM data WHERE ( id = ? )', '$row_set->sql()' );
 }
 
-sub test_sql_cached {
+sub test_sql_uncached {
     my ( $dq, $sponge_data ) = @_;
-    my $query = $dq->sql_cached( 'SELECT * FROM data', clone($sponge_data) );
+    my $query = $dq->sql_uncached( 'SELECT * FROM data', clone($sponge_data) );
     ok( $query, 'sql_cached() should return a query object' );
     isa_ok( $query, MODULE . '::st' );
 }
 
-sub test_get_cached {
+sub test_get_uncached {
     my ( $dq, $sponge_data ) = @_;
-    my $row_set = $dq->get_cached(
+    my $row_set = $dq->get_uncached(
         'data',
         [ qw( a b c ) ],
         { 'id' => 1 },
