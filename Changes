@@ -6,6 +6,7 @@ Revision history for DBIx::Query
         - Allow explicit SQL parsing dialect to be set
         - Deprecate sql_fast() and get_fast() in favor of sql() and fast()
         - Use caching by default; provide uncached alternatives
+        - Improve efficiecy of first()
 
 1.07      2019-08-27 15:27:56-07:00 America/Los_Angeles
         - Update Travis YAML

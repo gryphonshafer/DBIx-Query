@@ -497,7 +497,16 @@ our $_dq_parser_cache = {};
     }
 
     sub first {
-        return shift->all(@_)->[0];
+        my ( $self, $type ) = @_;
+        my $method = ( ref $type eq 'HASH' ) ? 'fetchrow_hashref' : 'fetchrow_arrayref';
+
+        my $value;
+        DBIx::Query::_Common::_try( $self, sub {
+            $value = $self->{'sth'}->$method;
+            $self->{'sth'}->finish;
+        } );
+
+        return $value;
     }
 
     sub column {
