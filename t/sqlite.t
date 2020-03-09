@@ -21,8 +21,7 @@ sub main {
         $insert->execute( split(/\|/) );
     }
 
-    test_normal_query($dq);
-    test_fast_query($dq);
+    test_query($dq);
     test_crud($dq);
     test_where($dq);
     test_db_helper_methods($dq);
@@ -35,7 +34,7 @@ sub main {
     return 0;
 }
 
-sub test_normal_query {
+sub test_query {
     my ($dq) = @_;
 
     is(
@@ -60,21 +59,6 @@ sub test_normal_query {
     );
 }
 
-sub test_fast_query {
-    my ($dq) = @_;
-
-    is(
-        $dq->sql_fast('SELECT west FROM movie WHERE open = ?')->run('Jul 1, 2011')->value(),
-        'Raising Arizona',
-        '$dq->sql_fast(...)->run(...)->value()',
-    );
-    is(
-        $dq->get_fast( 'movie', ['west'], { 'open' => 'Jul 1, 2011' } )->run()->value(),
-        'Raising Arizona',
-        '$dq->get_fast(...)->run(...)->value()',
-    );
-}
-
 sub test_crud {
     my ($dq) = @_;
 
@@ -92,7 +76,7 @@ sub test_crud {
         'add() succeeds and returns a primary key',
     );
     is(
-        $dq->get_fast( 'movie', ['west'], { 'open' => 'Jun 14, 2013' } )->run()->value(),
+        $dq->get( 'movie', ['west'], { 'open' => 'Jun 14, 2013' } )->run()->value(),
         'Vertigo',
         'add() data verified being in the database',
     );
@@ -100,7 +84,7 @@ sub test_crud {
     my $rv = $dq->update( 'movie', { 'west' => 'Another Earth' }, { 'open' => 'Jun 14, 2013' } );
     isa_ok( $rv, MODULE . '::db' );
     is(
-        $dq->get_fast( 'movie', ['west'], { 'open' => 'Jun 14, 2013' } )->run()->value(),
+        $dq->get( 'movie', ['west'], { 'open' => 'Jun 14, 2013' } )->run()->value(),
         'Another Earth',
         'update() data verified being in the database',
     );
@@ -108,7 +92,7 @@ sub test_crud {
     $rv = $dq->rm( 'movie', { 'open' => 'Jun 14, 2013' } );
     isa_ok( $rv, MODULE . '::db' );
     is(
-        $dq->get_fast( 'movie', ['west'], { 'open' => 'Jun 14, 2013' } )->run()->value(),
+        $dq->get( 'movie', ['west'], { 'open' => 'Jun 14, 2013' } )->run()->value(),
         undef,
         'rm() data verified being not in the database',
     );

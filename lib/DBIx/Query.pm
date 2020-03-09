@@ -48,6 +48,7 @@ our $_dq_parser_cache = {};
     use warnings;
     use SQL::Parser;
     use SQL::Abstract::Complete;
+    use Carp 'carp';
 
     use vars '@ISA';
     @ISA = qw( DBI::db DBIx::Query::_Common );
@@ -90,21 +91,28 @@ our $_dq_parser_cache = {};
         my ( $self, $sql, $attr, $cache_type, $variables ) = @_;
         $self->_croak('SQL input missing in sql() call') unless ( length $sql );
 
-        my $sth = $self->sql_fast( $sql, $attr, $cache_type, $variables );
+        my $sth;
+        $self->_try( sub {
+            $sth = ( not defined $cache_type )
+                ? $self->SUPER::prepare( $sql, $attr )
+                : $self->SUPER::prepare_cached( $sql, $attr, $cache_type );
+        } );
 
         $sql =~ s/(\r?\n|\s+)/ /g;
         $sql =~ s/^\s+|\s+$//g;
 
-        $sth->_param( 'sql' => $sql );
+        $sth->_param( 'sql'       => $sql       );
+        $sth->_param( 'dq'        => $self      );
+        $sth->_param( 'variables' => $variables );
+
         return $sth;
     }
 
-    sub _get_prep {
-        my ( $self, $method, $tables, $columns, $where, $meta, $attr, $cache_type ) = @_;
-        my ( $sql, @variables ) = $self->_param('sql_abstract')->select( $tables, $columns, $where, $meta );
+    sub get {
+        my ( $self, $tables, $columns, $where, $meta, $attr, $cache_type ) = @_;
 
-        return {
-            'method'     => $method,
+        my ( $sql, @variables ) = $self->_param('sql_abstract')->select( $tables, $columns, $where, $meta );
+        my $query               = {
             'tables'     => $tables,
             'columns'    => $columns,
             'where'      => $where,
@@ -114,13 +122,22 @@ our $_dq_parser_cache = {};
             'sql'        => $sql,
             'variables'  => \@variables,
         };
-    }
 
-    sub get {
-        my $self = shift;
-        my $query = $self->_get_prep( 'get', @_ );
-        my $sth = $self->sql( @{$query}{ qw( sql attr cache_type variables ) } );
-        $sth->_param( 'query' => $query );
+        my $sth;
+        $self->_try( sub {
+            $sth = ( not defined $query->{'cache_type'} )
+                ? $self->SUPER::prepare( $query->{'sql'}, $query->{'attr'} )
+                : $self->SUPER::prepare_cached( $query->{'sql'}, $query->{'attr'}, $query->{'cache_type'} );
+        } );
+
+        $query->{sql} =~ s/(\r?\n|\s+)/ /g;
+        $query->{sql} =~ s/^\s+|\s+$//g;
+
+        $sth->_param( 'sql'       => $query->{'sql'}       );
+        $sth->_param( 'dq'        => $self                 );
+        $sth->_param( 'variables' => $query->{'variables'} );
+        $sth->_param( 'query'     => $query                );
+
         return $sth;
     }
 
@@ -137,39 +154,15 @@ our $_dq_parser_cache = {};
     }
 
     sub sql_fast {
-        my ( $self, $sql, $attr, $cache_type, $variables ) = @_;
-
-        my $sth;
-        $self->_try( sub {
-            $sth = ( not defined $cache_type )
-                ? $self->SUPER::prepare( $sql, $attr )
-                : $self->SUPER::prepare_cached( $sql, $attr, $cache_type );
-        } );
-
-        $sth->_param( 'sql'       => $sql       );
-        $sth->_param( 'dq'        => $self      );
-        $sth->_param( 'variables' => $variables );
-
-        return $sth;
+        my $self = shift;
+        carp('sql_fast() is deprecated in favor of sql()');
+        return $self->sql(@_);
     }
 
     sub get_fast {
         my $self = shift;
-        my $query = $self->_get_prep( 'get_fast', @_ );
-
-        my $sth;
-        $self->_try( sub {
-            $sth = ( not defined $query->{'cache_type'} )
-                ? $self->SUPER::prepare( $query->{'sql'}, $query->{'attr'} )
-                : $self->SUPER::prepare_cached( $query->{'sql'}, $query->{'attr'}, $query->{'cache_type'} );
-        } );
-
-        $sth->_param( 'sql'       => $query->{'sql'}       );
-        $sth->_param( 'dq'        => $self                 );
-        $sth->_param( 'variables' => $query->{'variables'} );
-        $sth->_param( 'query'     => $query                );
-
-        return $sth;
+        carp('get_fast() is deprecated in favor of get()');
+        return $self->get(@_);
     }
 
     sub add {
@@ -177,7 +170,7 @@ our $_dq_parser_cache = {};
         my ( $sql, @variables ) = $self->_param('sql_abstract')->insert( $table_name, $params );
 
         $self->_try( sub {
-            my $sth = $self->sql_fast( $sql, $attr, $cache_type, \@variables );
+            my $sth = $self->sql( $sql, $attr, $cache_type, \@variables );
             $sth->execute( @{ $sth->_param('variables') || [] } );
         } );
 
@@ -219,7 +212,7 @@ our $_dq_parser_cache = {};
 
     sub get_run {
         my $self = shift;
-        my $sth = $self->get_fast(@_);
+        my $sth = $self->get(@_);
 
         $self->_try( sub {
             $sth->execute( @{ $sth->_param('variables') || [] } );
@@ -304,12 +297,10 @@ our $_dq_parser_cache = {};
         croak('where() requires a hashref or an even number of items in a list')
             if ( ref( $_[0] ) ne 'HASH' and @_ % 2 );
 
-        my $query  = $self->_param('query');
-        my $method = $query->{'method'};
-
+        my $query = $self->_param('query');
         $query->{'where'} = { %{ $query->{'where'} || {} }, ( ref( $_[0] ) eq 'HASH' ) ? %{ $_[0] } : @_ };
 
-        return $self->up()->$method( @{$query}{ qw( tables columns where meta attr cache_type ) } );
+        return $self->up()->get( @{$query}{ qw( tables columns where meta attr cache_type ) } );
     }
 
     sub run {
@@ -920,17 +911,9 @@ as the C<$if_active>. (See the L<DBI> documentation.)
 The following methods are "helper" methods of the database class, the object
 returned from a C<connect()> call.
 
-=head2 sql_fast() and get_fast()
-
-Returns a statement handle given a set of inputs pretty much exactly as
-C<sql()> and C<get()> would, except it do so without parsing the input or
-generated SQL. The result being that C<get_fast()> runs faster than C<get()>
-by a fair margin, but any method requiring SQL structure data (like
-C<structure()>) won't work.
-
 =head2 get_run()
 
-Takes the same parameters as C<get>. It internally calls C<get_fast()> followed
+Takes the same parameters as C<get>. It internally calls C<get()> followed
 by C<execute()>, then returns the executed statement handle.
 
 =head2 fetch_value()
@@ -970,8 +953,8 @@ handle objects returned from a variety of L<DBIx::Query> methods.
 
 =head2 where()
 
-If and only if you use C<get()> or C<get_fast()> to construct your statement
-handle, you can optionally use C<where()> to add or alter the where clause.
+If and only if you use C<get()> to construct your statement handle, you can
+optionally use C<where()> to add or alter the where clause.
 
     # data where a = 42
     $dq->get('data')->where( 'a' => 42 )->run()->all({});
@@ -1002,10 +985,8 @@ Returns a string consisting of the SQL the statement handle has.
 =head2 structure()
 
 Returns a data structure consisting of the parsed SQL the statement handle has,
-if that structure is available. This is fulfilled using L<SQL::Parser>. Parsing
-SQL is not particularly fast, so if you used something like C<sql_fast()>
-instead of C<sql()>, then C<structure()> will return undef. (See C<SQL::Parser>
-for details of the returned data.)
+if that structure is available. This is fulfilled using L<SQL::Parser>.
+(See C<SQL::Parser> for details of the returned data.)
 
 =head2 table()
 

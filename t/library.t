@@ -19,8 +19,6 @@ sub main {
     test_get( $dq, $data );
     test_sql_cached( $dq, $data );
     test_get_cached( $dq, $data );
-    test_sql_fast( $dq, $data );
-    test_get_fast( $dq, $data );
     test_add( $dq, $data );
     test_rm( $dq, $data );
     test_update( $dq, $data );
@@ -124,49 +122,6 @@ sub test_get_cached {
     );
 
     is( $row_set->sql(), 'SELECT a, b, c FROM data WHERE ( id = ? )', '$dq->get_cached()->sql()' );
-}
-
-sub test_sql_fast {
-    my ( $dq, $sponge_data ) = @_;
-
-    my $sth = $dq->sql_fast( 'SELECT * FROM data', clone($sponge_data) );
-    isa_ok( $sth, MODULE . '::st' );
-    is_deeply(
-        $sth->fetchrow_hashref(),
-        {
-            'open' => 'Jun 17, 2011',
-            'final' => 'Jun 19, 2011',
-            'west' => 'Hunt for Red October',
-            'east' => 'Jane Eyre'
-        },
-        'sql_fast() returns results',
-    );
-}
-
-sub test_get_fast {
-    my ( $dq, $sponge_data ) = @_;
-
-    my $sth = $dq->get_fast(
-        'data',
-        [ '*' ],
-        { 'id' => 1 },
-        undef,
-        clone($sponge_data),
-    );
-
-    $sth->execute();
-
-    isa_ok( $sth, MODULE . '::st' );
-    is_deeply(
-        $sth->fetchrow_hashref(),
-        {
-            'open'  => 'Jun 17, 2011',
-            'final' => 'Jun 19, 2011',
-            'west'  => 'Hunt for Red October',
-            'east'  => 'Jane Eyre'
-        },
-        'get_fast()->execute() returns results',
-    );
 }
 
 sub test_add {
