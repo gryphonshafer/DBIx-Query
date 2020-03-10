@@ -4,7 +4,7 @@ DBIx::Query - Simplified abstracted chained DBI subclass
 
 # VERSION
 
-version 1.07
+version 1.08
 
 [![Build Status](https://travis-ci.org/gryphonshafer/DBIx-Query.svg)](https://travis-ci.org/gryphonshafer/DBIx-Query)
 [![Coverage Status](https://coveralls.io/repos/gryphonshafer/DBIx-Query/badge.png)](https://coveralls.io/r/gryphonshafer/DBIx-Query)
@@ -13,7 +13,12 @@ version 1.07
 
     use DBIx::Query;
 
-    my $dq = DBIx::Query->connect( "dbi:Pg:dbname=$db_name;host=$db_host", $user, $pwd );
+    my $dq = DBIx::Query->connect(
+        "dbi:Pg:dbname=$db_name;host=$db_host",
+        $user,
+        $pwd,
+        { dq_dialect => 'ANSI' },
+    );
 
     # get stuff, things, and everything easily
     my $everything = $dq->get('things')->run()->all({});
@@ -54,7 +59,7 @@ This module provides a simplified abstracted chained DBI subclass. It's sort of
 like jQuery for [DBI](https://metacpan.org/pod/DBI), or sort of like DBIx::Class only without objects, or sort
 of like cookies without a glass of milk. With DBIx::Query, you can construct
 queries either with SQL or abstract Perl data structures described by
-[SQL::Abstract::Complete](https://metacpan.org/pod/SQL::Abstract::Complete).
+[SQL::Abstract::Complete](https://metacpan.org/pod/SQL%3A%3AAbstract%3A%3AComplete).
 
     my $stuff  = $dq->sql('SELECT stuff FROM things WHERE value = ?')->run(42)->all();
     my $things = $dq->get( 'things', ['stuff'], { 'value' = 42 } )->run()->all();
@@ -74,9 +79,17 @@ any point, you can drop out of DBIx::Query-specific methods and use DBI methods.
     my $stuff = $sth->fetchall_arrayref();
 
 Like [DBI](https://metacpan.org/pod/DBI), there are multiple sub-classes each with a set of methods related
-to its level. In [DBI](https://metacpan.org/pod/DBI), there is: DBI (the parent class), db (the object
-created from a connect call), and st (the statement handle). DBIx::Query adds
-the following additional: rowset, row, and cell.
+to its level. In [DBI](https://metacpan.org/pod/DBI), there is:
+
+- DBI (the parent class)
+- db (the object created from a connect call)
+- st (the statement handle)
+
+DBIx::Query adds the following additional:
+
+- rowset
+- row
+- cell
 
 # PARENT CLASS METHODS
 
@@ -84,18 +97,45 @@ The following methods exists at the "parent class" level.
 
 ## connect()
 
-This method is inherritted from [DBI](https://metacpan.org/pod/DBI). I only mention it here to point out
-that since DBIx::Query is a true subclass of [DBI](https://metacpan.org/pod/DBI), typically the only thing
-you have to do to switch from [DBI](https://metacpan.org/pod/DBI) to DBIx::Query is to change the
-`connect()` method's package name.
+This method is mostly inherritted from [DBI](https://metacpan.org/pod/DBI)'s `connect_cached()`. Since
+DBIx::Query is a true subclass of [DBI](https://metacpan.org/pod/DBI), typically the only thing you have to
+do to switch from [DBI](https://metacpan.org/pod/DBI) to DBIx::Query is to change the `connect()` method's
+package name.
 
     my $dq = DBIx::Query->connect(
         "dbi:Pg:dbname=$db_name;host=$db_host", $username, $password,
-        { 'RaiseError' => 1 },
     );
 
 The object returned is a database object and so will support both [DBI](https://metacpan.org/pod/DBI) and
 DBIx::Query methods associated with database objects.
+
+There are some caveats. First, the default behavior of DBIx::Query's
+`connect()` is actually DBI's `connect_cached`. If you want a non-cached
+connect, look at `connect_uncached()` below. Second, the default attributes
+of the connection will have "RaiseError" on and "PrintError" off. These can be
+easily overridden if you desire.
+
+### dq\_dialect
+
+As part of the optional attribute hashref for `connect()`, you may pass in an
+optional `dq_dialect` value. This should be a string that represents the SQL
+dialect you're going to use, and for which DBIx::Query should be prepared to
+parse.
+
+    my $dq = DBIx::Query->connect(
+        'dbi:SQLite:dbname=:memory:',
+        undef,
+        undef,
+        { dq_dialect => 'ANSI' },
+    );
+
+For more information, see [SQL::Parser](https://metacpan.org/pod/SQL%3A%3AParser) documentation on dialect. If not
+specified, DBIx::Query defaults to the "ANSI" dialect.
+
+## connect\_uncached()
+
+If you'd prefer [DBI](https://metacpan.org/pod/DBI)'s normal, uncached `connect()` behavior, you can use
+`connect_uncached()`.
 
 ## errstr()
 
@@ -125,8 +165,8 @@ arrayref or array depending on context.
 If no values are provided, this method returns a hashref or an array of values
 depending on the context.
 
-    my $hashref  = $dq->connection();
-    my @array    = $dq->connection();
+    my $hashref = $dq->connection();
+    my @array   = $dq->connection();
 
 ## sql()
 
@@ -135,9 +175,9 @@ variables and returns a DBIx::Query statement handle.
 
     my $sth = $db->sql('SELECT alpha, beta, COUNT(*) FROM things WHERE delta > ?');
 
-If the cache type definition is `undef`, then DBIx::Query calls [DBI](https://metacpan.org/pod/DBI)'s
-`prepare()`, else it calls `prepare_cached()` and uses the cache type as the
-`$if_active`. (See the [DBI](https://metacpan.org/pod/DBI) documentation.)
+If the cache type definition is `undef`, then DBIx::Query will set it to 3.
+(See [DBI](https://metacpan.org/pod/DBI) for details of what the 1, 2, and 3 level caching means.) If you'd
+prefer no caching, you can set cache type to -1 or use `sql_uncached`.
 
 The attributes value is passed through to the `prepare()` or
 `prepare_cached()` call. The values (if any are provided) are stored in the
@@ -151,11 +191,16 @@ statement handle and used as default values if none are provided later during
         10,
     )->run();
 
+## sql\_uncached()
+
+This method is the equivalent of `sql()` with the cache value set to -1, which
+results in a normal `prepare` call instead of `prepare_cached`.
+
 ## get()
 
 The second way to build a statement handle is through the use of `get()`,
 which expects some number of input parameters that are fed into
-[SQL::Abstract::Complete](https://metacpan.org/pod/SQL::Abstract::Complete) to generate SQL.
+[SQL::Abstract::Complete](https://metacpan.org/pod/SQL%3A%3AAbstract%3A%3AComplete) to generate SQL.
 
     my $sth = $dq->get(
         $table || \@tables, # a table or set of tables and optional aliases
@@ -166,17 +211,18 @@ which expects some number of input parameters that are fed into
         $cache_type,        # cache type
     );
 
-The first 4 inputs are passed directly to [SQL::Abstract::Complete](https://metacpan.org/pod/SQL::Abstract::Complete), so
+The first 4 inputs are passed directly to [SQL::Abstract::Complete](https://metacpan.org/pod/SQL%3A%3AAbstract%3A%3AComplete), so
 consult that documentation for details. The last 2 inputs are the same as what
-is used for `sql()`. If the cache type definition is `undef`, then
-DBIx::Query calls [DBI](https://metacpan.org/pod/DBI)'s `prepare()`, else it calls `prepare_cached()` and
-uses the cache type as the `$if_active`. (See the [DBI](https://metacpan.org/pod/DBI) documentation.)
+is used for `sql()`.
 
-## sql\_cached() and get\_cached()
+If the cache type definition is `undef`, then DBIx::Query will set it to 3.
+(See [DBI](https://metacpan.org/pod/DBI) for details of what the 1, 2, and 3 level caching means.) If you'd
+prefer no caching, you can set cache type to -1 or use `sql_uncached`.
 
-These are simple wrapper methods around `sql()` and `get()` that explicitly
-set caching on and cache type set to 0. This is the normal behavior if you're
-calling [DBI](https://metacpan.org/pod/DBI)'s `prepare_cached()`.
+## get\_uncached()
+
+This method is the equivalent of `get()` with the cache value set to -1, which
+results in a normal `prepare` call instead of `prepare_cached`.
 
 ## add()
 
@@ -221,26 +267,20 @@ was called.
 
 The `$params` value is a hashref of fields and values for the update. The
 `$where` value is a hashref of fields and values to be used as a where clause
-for the update. If the cache type definition is `undef`, then DBIx::Query calls
-[DBI](https://metacpan.org/pod/DBI)'s `prepare()`, else it calls `prepare_cached()` and uses the cache type
-as the `$if_active`. (See the [DBI](https://metacpan.org/pod/DBI) documentation.)
+for the update.
+
+If the cache type definition is `undef`, then DBIx::Query will set it to 3.
+(See [DBI](https://metacpan.org/pod/DBI) for details of what the 1, 2, and 3 level caching means.) If you'd
+prefer no caching, you can set cache type to -1 or use `sql_uncached`.
 
 # DATABASE CLASS HELPER METHODS
 
 The following methods are "helper" methods of the database class, the object
 returned from a `connect()` call.
 
-## sql\_fast() and get\_fast()
-
-Returns a statement handle given a set of inputs pretty much exactly as
-`sql()` and `get()` would, except it do so without parsing the input or
-generated SQL. The result being that `get_fast()` runs faster than `get()`
-by a fair margin, but any method requiring SQL structure data (like
-`structure()`) won't work.
-
 ## get\_run()
 
-Takes the same parameters as `get`. It internally calls `get_fast()` followed
+Takes the same parameters as `get`. It internally calls `get()` followed
 by `execute()`, then returns the executed statement handle.
 
 ## fetch\_value()
@@ -267,21 +307,25 @@ against the database class and returns the first column's values as an arrayref.
 
 ## fetchrow\_hashref()
 
-Accepts some SQL and optional variables (as a list). It internally calls
-`prepare_cached`, `execute()` with the variables passed in, and then returns
-the first `fetchrow_hashref()` result (`fetchrow_hashref()` being called
-against the executed statement handle).
+Accepts some SQL and other optional values, prepares and executes the query,
+and returns the first row as a hashref.
+
+    my $hashref_row = $dq->fetchrow_hashref( $sql, $variables, $attr, $cache_type );
+
+Variables for the query are expected in an arrayref. Attributes are expected as
+a hashref. And the cache type is by default set to 3 if not defined. If you want
+to skip caching, pass a value of -1.
 
 # STATEMENT HANDLE METHODS
 
 The following methods are available from statement handle objects. These along
 with inherritted [DBI](https://metacpan.org/pod/DBI) statement handle methods are available from statement
-handle objects returned from a variety of [DBIx::Query](https://metacpan.org/pod/DBIx::Query) methods.
+handle objects returned from a variety of [DBIx::Query](https://metacpan.org/pod/DBIx%3A%3AQuery) methods.
 
 ## where()
 
-If and only if you use `get()` or `get_fast()` to construct your statement
-handle, you can optionally use `where()` to add or alter the where clause.
+If and only if you use `get()` to construct your statement handle, you can
+optionally use `where()` to add or alter the where clause.
 
     # data where a = 42
     $dq->get('data')->where( 'a' => 42 )->run()->all({});
@@ -312,10 +356,8 @@ Returns a string consisting of the SQL the statement handle has.
 ## structure()
 
 Returns a data structure consisting of the parsed SQL the statement handle has,
-if that structure is available. This is fulfilled using [SQL::Parser](https://metacpan.org/pod/SQL::Parser). Parsing
-SQL is not particularly fast, so if you used something like `sql_fast()`
-instead of `sql()`, then `structure()` will return undef. (See `SQL::Parser`
-for details of the returned data.)
+if that structure is available. This is fulfilled using [SQL::Parser](https://metacpan.org/pod/SQL%3A%3AParser).
+(See `SQL::Parser` for details of the returned data.)
 
 ## table()
 
@@ -526,14 +568,12 @@ When called against a cell object, returns the row object to which it belongs.
 
 # SEE ALSO
 
-[SQL::Abstract::Complete](https://metacpan.org/pod/SQL::Abstract::Complete), [DBI](https://metacpan.org/pod/DBI).
+[SQL::Abstract::Complete](https://metacpan.org/pod/SQL%3A%3AAbstract%3A%3AComplete), [DBI](https://metacpan.org/pod/DBI).
 
 You can also look for additional information at:
 
 - [GitHub](https://github.com/gryphonshafer/DBIx-Query)
-- [CPAN](http://search.cpan.org/dist/DBIx-Query)
 - [MetaCPAN](https://metacpan.org/pod/DBIx::Query)
-- [AnnoCPAN](http://annocpan.org/dist/DBIx-Query)
 - [Travis CI](https://travis-ci.org/gryphonshafer/DBIx-Query)
 - [Coveralls](https://coveralls.io/r/gryphonshafer/DBIx-Query)
 - [CPANTS](http://cpants.cpanauthors.org/dist/DBIx-Query)
@@ -545,7 +585,7 @@ Gryphon Shafer <gryphon@cpan.org>
 
 # COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2018 by Gryphon Shafer.
+This software is copyright (c) 2020 by Gryphon Shafer.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
