@@ -12,6 +12,30 @@ use parent 'DBI';
 *errstr = \*DBI::errstr;
 our $_dq_parser_cache = {};
 
+sub _connect {
+    my ( $self, $dsn, $user, $pass, $attr, $connect ) = @_;
+
+    $attr = ($attr) ? \%$attr : {};
+    $attr->{PrintError} = 0 unless ( exists $attr->{PrintError} );
+    $attr->{RaiseError} = 1 unless ( exists $attr->{RaiseError} );
+
+    return $self->SUPER::connect( $dsn, $user, $pass, {
+        %$attr,
+        dbi_connect_method => ( $DBI::connect_via eq 'Apache::DBI::connect' )
+            ? 'Apache::DBI::connect' : $connect,
+    } );
+}
+
+sub connect {
+    my ( $self, $dsn, $user, $pass, $attr ) = @_;
+    return $self->_connect( $dsn, $user, $pass, $attr, 'connect_cached' );
+}
+
+sub connect_uncached {
+    my ( $self, $dsn, $user, $pass, $attr ) = @_;
+    return $self->_connect( $dsn, $user, $pass, $attr, 'connect' );
+}
+
 #-----------------------------------------------------------------------------
 
 {
@@ -53,16 +77,6 @@ our $_dq_parser_cache = {};
 
     use vars '@ISA';
     @ISA = qw( DBI::db DBIx::Query::_Common );
-
-    sub connect {
-        my $self = shift;
-        return $self->SUPER::connect_cached(@_);
-    }
-
-    sub connect_uncached {
-        my $self = shift;
-        return $self->SUPER::connect(@_);
-    }
 
     sub connected {
         my $self = shift;
@@ -801,17 +815,23 @@ The following methods exists at the "parent class" level.
 
 =head2 connect()
 
-This method is inherritted from L<DBI>'s C<connect_cached()>.  Since DBIx::Query
-is a true subclass of L<DBI>, typically the only thing you have to do to switch
-from L<DBI> to DBIx::Query is to change the C<connect()> method's package name.
+This method is mostly inherritted from L<DBI>'s C<connect_cached()>. Since
+DBIx::Query is a true subclass of L<DBI>, typically the only thing you have to
+do to switch from L<DBI> to DBIx::Query is to change the C<connect()> method's
+package name.
 
     my $dq = DBIx::Query->connect(
         "dbi:Pg:dbname=$db_name;host=$db_host", $username, $password,
-        { 'RaiseError' => 1 },
     );
 
 The object returned is a database object and so will support both L<DBI> and
 DBIx::Query methods associated with database objects.
+
+There are some caveats. First, the default behavior of DBIx::Query's
+C<connect()> is actually DBI's C<connect_cached>. If you want a non-cached
+connect, look at C<connect_uncached()> below. Second, the default attributes
+of the connection will have "RaiseError" on and "PrintError" off. These can be
+easily overridden if you desire.
 
 =head3 dq_dialect
 

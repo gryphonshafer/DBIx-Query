@@ -12,9 +12,8 @@ sub main {
     require_ok(MODULE);
 
     my $data = load_sponge_data();
-    my $dq   = test_connect();
 
-    test_connection( $dq, $data );
+    my $dq = test_connection($data);
     test_sql( $dq, $data );
     test_get( $dq, $data );
     test_sql_uncached( $dq, $data );
@@ -48,28 +47,64 @@ sub load_sponge_data {
     return $sponge_data;
 }
 
-sub test_connect {
-    my $dq = MODULE->connect( 'dbi:Sponge:', '', '', { 'RaiseError' => 1 } );
-    ok( $dq, MODULE . '->connect()' );
-    isa_ok( $dq, MODULE . '::db' );
-
-    return $dq;
-}
-
 sub test_connection {
-    my $dq = shift;
+    my $dq = MODULE->connect_uncached( 'dbi:Sponge:', '', '' );
+    ok( $dq, MODULE . '->connect_uncached()' );
+    isa_ok( $dq, MODULE . '::db' );
 
     is( $dq->connection('dsn'), 'dbi:Sponge:', q{connection('dsn') should return dsn} );
     is_deeply(
         scalar $dq->connection,
-        { 'dsn' => 'dbi:Sponge:', 'user' => '', 'pass' => '', 'attr' => { RaiseError => 1 } },
+        {
+            'dsn'  => 'dbi:Sponge:',
+            'user' => '',
+            'pass' => '',
+            'attr' => {
+                dbi_connect_method => 'connect',
+                RaiseError         => 1,
+                PrintError         => 0,
+            },
+        },
         'scalar connection() should return full hashref',
     );
     is_deeply(
         [ $dq->connection ],
-        [ 'dbi:Sponge:', '', '', { RaiseError => 1 } ],
+        [ 'dbi:Sponge:', '', '', {
+            dbi_connect_method => 'connect',
+            RaiseError         => 1,
+            PrintError         => 0,
+        } ],
         'connection() in list context should return full list',
     );
+
+    $dq = MODULE->connect( 'dbi:Sponge:', '', '', { 'RaiseError' => 1 } );
+    ok( $dq, MODULE . '->connect()' );
+    isa_ok( $dq, MODULE . '::db' );
+
+    is_deeply(
+        scalar $dq->connection,
+        {
+            'dsn'  => 'dbi:Sponge:',
+            'user' => '',
+            'pass' => '',
+            'attr' => {
+                dbi_connect_method => 'connect_cached',
+                RaiseError         => 1,
+                PrintError         => 0,
+            },
+        },
+        'scalar connection() should return full hashref',
+    );
+    is_deeply(
+        [ $dq->connection ],
+        [ 'dbi:Sponge:', '', '', {
+            dbi_connect_method => 'connect_cached',
+            RaiseError         => 1,
+            PrintError         => 0,
+        } ],
+        'connection() in list context should return full list',
+    );
+
     is_deeply(
         scalar $dq->connection( qw( dsn user ) ),
         [ 'dbi:Sponge:', '' ],
@@ -80,6 +115,8 @@ sub test_connection {
         [ 'dbi:Sponge:', '' ],
         'connection( qw( dsn user ) ) in list context should return array',
     );
+
+    return $dq;
 }
 
 sub test_sql {
