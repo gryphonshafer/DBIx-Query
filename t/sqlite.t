@@ -311,6 +311,54 @@ sub test_row_set_methods {
         [ 'Hunt for Red October', 'Jane Eyre' ],
         '$dq->sql(...)->run(...)->value() in list context',
     );
+
+    is_deeply(
+        [ $dq->sql('SELECT * FROM movie')->run()->first ],
+        [ [
+            'Jun 17, 2011',
+            'Jun 19, 2011',
+            'Hunt for Red October',
+            'Jane Eyre',
+        ] ],
+        'first()',
+    );
+
+    is_deeply(
+        [ $dq->sql('SELECT * FROM movie')->run()->first({}) ],
+        [ {
+            east  => 'Jane Eyre',
+            final => 'Jun 19, 2011',
+            open  => 'Jun 17, 2011',
+            west  => 'Hunt for Red October',
+        } ],
+        'first({})',
+    );
+
+    my $titles = [
+        'Hunt for Red October',
+        'Robots',
+        'Raising Arizona',
+        q{Miller's Crossing},
+        'Big Lebowski',
+        'Super 8',
+        'Raiders of the Lost Ark',
+        'Indiana Jones and the Temple of Doom',
+        'Indiana Jones and the Last Crusade',
+        'Neverending Story',
+        'Gladiator',
+    ];
+
+    is_deeply(
+        [ $dq->sql('SELECT west FROM movie')->run()->column() ],
+        $titles,
+        'column() array context',
+    );
+
+    is_deeply(
+        scalar( $dq->sql('SELECT west FROM movie')->run()->column() ),
+        $titles,
+        'column() scalar context',
+    );
 }
 
 sub test_row_methods {

@@ -524,7 +524,9 @@ sub connect_uncached {
     }
 
     sub column {
-        my @values = map { $_->[0] } @{ shift->all() };
+        my $self   = shift;
+        my @values = map { $_->[0] } @{ ( $self->all() )[0] };
+
         return (wantarray) ? @values : \@values;
     }
 
