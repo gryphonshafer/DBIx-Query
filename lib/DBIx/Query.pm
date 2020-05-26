@@ -463,13 +463,13 @@ sub connect_uncached {
         my $self  = shift;
         my @input = @_;
 
-        my @value;
+        my $value;
         DBIx::Query::_Common::_try( $self, sub {
-            @value = $self->{'sth'}->fetchall_arrayref(@input);
+            $value = $self->{'sth'}->fetchall_arrayref(@input);
             $self->{'sth'}->finish;
         } );
 
-        return @value;
+        return $value;
     }
 
     sub each {
