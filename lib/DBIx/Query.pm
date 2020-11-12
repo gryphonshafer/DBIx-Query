@@ -715,8 +715,8 @@ __END__
 =begin :badges
 
 =for markdown
-[![Build Status](https://travis-ci.org/gryphonshafer/DBIx-Query.svg)](https://travis-ci.org/gryphonshafer/DBIx-Query)
-[![Coverage Status](https://coveralls.io/repos/gryphonshafer/DBIx-Query/badge.png)](https://coveralls.io/r/gryphonshafer/DBIx-Query)
+[![build](https://github.com/gryphonshafer/DBIx-Query/workflows/build/badge.svg)](https://github.com/gryphonshafer/DBIx-Query/actions?query=workflow%3Abuild)
+[![codecov](https://codecov.io/gh/gryphonshafer/DBIx-Query/graph/badge.svg)](https://codecov.io/gh/gryphonshafer/DBIx-Query)
 
 =end :badges
 
@@ -1325,8 +1325,8 @@ You can also look for additional information at:
 =for :list
 * L<GitHub|https://github.com/gryphonshafer/DBIx-Query>
 * L<MetaCPAN|https://metacpan.org/pod/DBIx::Query>
-* L<Travis CI|https://travis-ci.org/gryphonshafer/DBIx-Query>
-* L<Coveralls|https://coveralls.io/r/gryphonshafer/DBIx-Query>
+* L<GitHub Actions|https://github.com/gryphonshafer/DBIx-Query/actions>
+* L<Codecov|https://codecov.io/gh/gryphonshafer/DBIx-Query>
 * L<CPANTS|http://cpants.cpanauthors.org/dist/DBIx-Query>
 * L<CPAN Testers|http://www.cpantesters.org/distro/D/DBIx-Query.html>
 
