@@ -4,10 +4,10 @@ DBIx::Query - Simplified abstracted chained DBI subclass
 
 # VERSION
 
-version 1.10
+version 1.11
 
-[![Build Status](https://travis-ci.org/gryphonshafer/DBIx-Query.svg)](https://travis-ci.org/gryphonshafer/DBIx-Query)
-[![Coverage Status](https://coveralls.io/repos/gryphonshafer/DBIx-Query/badge.png)](https://coveralls.io/r/gryphonshafer/DBIx-Query)
+[![build](https://github.com/gryphonshafer/DBIx-Query/workflows/build/badge.svg)](https://github.com/gryphonshafer/DBIx-Query/actions?query=workflow%3Abuild)
+[![codecov](https://codecov.io/gh/gryphonshafer/DBIx-Query/graph/badge.svg)](https://codecov.io/gh/gryphonshafer/DBIx-Query)
 
 # SYNOPSIS
 
@@ -604,8 +604,8 @@ You can also look for additional information at:
 
 - [GitHub](https://github.com/gryphonshafer/DBIx-Query)
 - [MetaCPAN](https://metacpan.org/pod/DBIx::Query)
-- [Travis CI](https://travis-ci.org/gryphonshafer/DBIx-Query)
-- [Coveralls](https://coveralls.io/r/gryphonshafer/DBIx-Query)
+- [GitHub Actions](https://github.com/gryphonshafer/DBIx-Query/actions)
+- [Codecov](https://codecov.io/gh/gryphonshafer/DBIx-Query)
 - [CPANTS](http://cpants.cpanauthors.org/dist/DBIx-Query)
 - [CPAN Testers](http://www.cpantesters.org/distro/D/DBIx-Query.html)
 
@@ -615,7 +615,7 @@ Gryphon Shafer <gryphon@cpan.org>
 
 # COPYRIGHT AND LICENSE
 
-This software is copyright (c) 2020 by Gryphon Shafer.
+This software is copyright (c) 2021 by Gryphon Shafer.
 
 This is free software; you can redistribute it and/or modify it under
 the same terms as the Perl 5 programming language system itself.
