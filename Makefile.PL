@@ -13,7 +13,7 @@ my %WriteMakefileArgs = (
     "ExtUtils::MakeMaker" => 0
   },
   "DISTNAME" => "DBIx-Query",
-  "LICENSE" => "perl",
+  "LICENSE" => "artistic_2",
   "MIN_PERL_VERSION" => "5.010",
   "NAME" => "DBIx::Query",
   "PREREQ_PM" => {
