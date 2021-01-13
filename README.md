@@ -4,7 +4,7 @@ DBIx::Query - Simplified abstracted chained DBI subclass
 
 # VERSION
 
-version 1.11
+version 1.12
 
 [![test](https://github.com/gryphonshafer/DBIx-Query/workflows/test/badge.svg)](https://github.com/gryphonshafer/DBIx-Query/actions?query=workflow%3Atest)
 [![codecov](https://codecov.io/gh/gryphonshafer/DBIx-Query/graph/badge.svg)](https://codecov.io/gh/gryphonshafer/DBIx-Query)
