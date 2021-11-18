@@ -9,7 +9,12 @@ use warnings;
 
 use DBI 1.40;
 use parent 'DBI';
-*errstr = \*DBI::errstr;
+
+{
+    no warnings 'once';
+    *errstr = \*DBI::errstr;
+}
+
 our $_dq_parser_cache = {};
 
 sub _connect {
