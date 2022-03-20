@@ -1,6 +1,7 @@
 Revision history for DBIx::Query
 
 {{$NEXT}}
+        - Minor documentation update
 
 1.13      2021-11-18 09:10:25-08:00 America/Los_Angeles
         - Silence a "once" warning
