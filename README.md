@@ -4,7 +4,7 @@ DBIx::Query - Simplified abstracted chained DBI subclass
 
 # VERSION
 
-version 1.14
+version 1.15
 
 [![test](https://github.com/gryphonshafer/DBIx-Query/workflows/test/badge.svg)](https://github.com/gryphonshafer/DBIx-Query/actions?query=workflow%3Atest)
 [![codecov](https://codecov.io/gh/gryphonshafer/DBIx-Query/graph/badge.svg)](https://codecov.io/gh/gryphonshafer/DBIx-Query)
@@ -130,7 +130,8 @@ parse.
     );
 
 For more information, see [SQL::Parser](https://metacpan.org/pod/SQL%3A%3AParser) documentation on dialect. If not
-specified, DBIx::Query defaults to the "ANSI" dialect.
+specified, DBIx::Query defaults to a pseudo "ANSI" dialect, which is: the "ANSI"
+dialect with all reserved words removed.
 
 ## connect\_uncached
 
@@ -276,6 +277,10 @@ for the update.
 If the cache type definition is `undef`, then DBIx::Query will set it to 3.
 (See [DBI](https://metacpan.org/pod/DBI) for details of what the 1, 2, and 3 level caching means.) If you'd
 prefer no caching, you can set cache type to -1 or use `sql_uncached`.
+
+## abstract
+
+Return the [SQL::Abstract::Complete](https://metacpan.org/pod/SQL%3A%3AAbstract%3A%3AComplete) object used in the database object.
 
 # DATABASE CLASS HELPER METHODS
 
