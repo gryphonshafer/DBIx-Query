@@ -1,6 +1,7 @@
 Revision history for DBIx::Query
 
 {{$NEXT}}
+        - Perl minimum version align
 
 1.15      2024-03-28 12:26:27-07:00 America/Los_Angeles
         - Carp SQL parsing errors
