@@ -1,6 +1,7 @@
 Revision history for DBIx::Query
 
 {{$NEXT}}
+        - Change author email address (sadly)
 
 1.17      2025-06-13 10:24:57-07:00 America/Los_Angeles
         - Add security policy as per CPANSec recommendation
